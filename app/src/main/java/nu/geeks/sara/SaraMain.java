@@ -1,6 +1,10 @@
 package nu.geeks.sara;
 
 import android.app.Activity;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -8,31 +12,44 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 
-public class SaraMain extends Activity {
+/*
+The app is locked in portrait mode. This is done in AndroidManifest.xml with the lines:
+        android:screenOrientation="portrait"
+        android:configChanges="keyboardHidden|orientation"
+
+ The titlebar (where the name of the app is, if you look in the XML-viewer, is also removed
+ in the manifest with this line:
+         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
+
+ */
 
 
-    /*
-    The app is locked in portrait mode. This is done in AndroidManifest.xml with the lines:
-            android:screenOrientation="portrait"
-            android:configChanges="keyboardHidden|orientation"
+public class SaraMain extends Activity implements SensorEventListener {
 
-     The titlebar (where the name of the app is, if you look in the XML-viewer, is also removed
-     in the manifest with this line:
-             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
 
-     */
+
+
+    //double acc[] = new double[3];
+    double accY;
+    private SensorManager sensorManager;
+    TextView text1, text2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
 
+        //Initializing sensor, creating a sensor manager.
+        sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+
         /*
         Everything created in the XML-view (drag and drop view) must be linked in code to be useful.
         "textView" in R.id.textView is the name given in XML-view.
         Must be final.
          */
-        final TextView text1 = (TextView) findViewById(R.id.textView);
+        text1 = (TextView) findViewById(R.id.textView);
+        text2 = (TextView) findViewById(R.id.textView2);
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
 
         //Set initial value to 50, middle of seekbar.
@@ -44,11 +61,6 @@ public class SaraMain extends Activity {
         */
         text1.setText("Speed: 0");
 
-        /*
-        rotate text to 90 degs. Could have set the orientation of the app to be landscape
-        instead, but fudge it
-        */
-        text1.setRotation(90);
 
         /*
         OnSeekBarChangeListener will be called upon when the user touch the seekbar.
@@ -78,9 +90,45 @@ public class SaraMain extends Activity {
     }
 
 
+    /* This has to be defined when implementing SensorEventListener.
+    *   This is the method that is called when the sensor values changes (which is pretty much
+    *   all the time). Also interrupt-based, does not need to be called upon.
+    *
+    */
+    public void onSensorChanged(SensorEvent event){
+      if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
+
+          /*
+          for(int i = 0; i < 3; i++){
+              acc[i] = event.values[i];
+          }
+          */
+
+          //realised only value[1] is of use. That is the acc on the y-axis.
+          if(event.values[1] < 0){
+              text2.setText("L");
+          }else if(event.values[1] > 0){
+              text2.setText("R");
+          }
+
+          //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
+          text2.setRotation(event.values[1]*-5+90);
+
+
+      }
+
+
+    }
+
+    //Has to be defined when implementing sensorEventListener
+    public void onAccuracyChanged(Sensor sensor, int accuracy){}
+
+
     /*
     Stuff below is auto generated code. Don't think we need to care about it.
      */
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
