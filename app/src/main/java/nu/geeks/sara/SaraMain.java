@@ -73,7 +73,7 @@ public class SaraMain extends Activity implements SensorEventListener {
                 /*
                 Simply change the textvalue to the current progress.
                  */
-                text1.setText("Speed: " + (progress - 50));
+                text1.setText("Speed: " + (progress - 50)/5);
             }
 
             @Override
