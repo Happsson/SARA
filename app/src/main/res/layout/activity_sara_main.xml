@@ -36,12 +36,15 @@
         android:layout_alignParentLeft="true"
         android:layout_marginLeft="49dp" />
 
-    <ListView
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/listView"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Not connected"
+        android:id="@+id/tConnected"
         android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="82dp" />
+        android:layout_alignStart="@+id/textView"
+        android:layout_marginStart="95dp"
+        android:textColor="#ffff0f00" />
 
 </RelativeLayout>

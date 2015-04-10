@@ -1,10 +1,14 @@
 package nu.geeks.sara;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -42,7 +46,7 @@ The app is locked in portrait mode. This is done in AndroidManifest.xml with the
 public class SaraMain extends Activity implements SensorEventListener {
 
 
-    private static String address;
+    private static String address; //This string will hold the name of our bluetooth-device
 
     Handler bluetoothIn;
 
@@ -56,9 +60,10 @@ public class SaraMain extends Activity implements SensorEventListener {
     //double acc[] = new double[3];
     double accY;
     private SensorManager sensorManager;
-    TextView text1, text2;
+    TextView text1, text2, tConnected;
 
     Boolean bluetoothEnable = true;
+    Boolean bluetoothConnected = false;
 
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -72,9 +77,6 @@ public class SaraMain extends Activity implements SensorEventListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
 
-
-          bluetoothConnection();
-
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
@@ -84,6 +86,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         "textView" in R.id.textView is the name given in XML-view.
         Must be final.
          */
+        tConnected = (TextView) findViewById(R.id.tConnected);
         text1 = (TextView) findViewById(R.id.textView);
         text2 = (TextView) findViewById(R.id.textView2);
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
@@ -110,7 +113,9 @@ public class SaraMain extends Activity implements SensorEventListener {
                 Simply change the textvalue to the current progress.
                  */
                 text1.setText("Speed: " + (progress - 50)/5);
-                mConnectedThread.write(Integer.toString(progress));
+                if(bluetoothConnected) {
+                    mConnectedThread.write(Integer.toString(progress));
+                }
             }
 
             @Override
@@ -126,6 +131,11 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     }
 
+    /**
+     * Initiate bluetooth connection with SARA. If SARA and the phone is not paired, it will promt
+     * a message to the user, telling hen to connect to SARA manually. 
+     *
+     */
     private void bluetoothConnection(){
 
         //Initialize bluetooth
@@ -135,8 +145,6 @@ public class SaraMain extends Activity implements SensorEventListener {
             bluetoothEnable = false;
             Toast.makeText(getApplicationContext(), "Bluetooth not supported!", Toast.LENGTH_LONG).show();
 
-        }else{
-            Toast.makeText(getApplicationContext(), "Bluetooth is supported!", Toast.LENGTH_LONG).show();
         }
 
         if (!btAdapter.isEnabled()) {
@@ -154,47 +162,67 @@ public class SaraMain extends Activity implements SensorEventListener {
                 if(device.getName().equals("HC-06")){
                     address = device.getAddress();
                     Toast.makeText(getApplicationContext(), "CONNECTED TO SARA!", Toast.LENGTH_LONG).show();
+                    tConnected.setText("Connected");
+                    tConnected.setTextColor(Color.GREEN);
+                    bluetoothConnected = true;
                 }
                 }
             }
+
+        if(pairedDevices.size() == 0){
+            new AlertDialog.Builder(SaraMain.this)
+                    .setTitle("No connection found")
+                    .setMessage("You are not paired with SARA. Do this by manually " +
+                            "connecting to the bluetooth receiver in" +
+                            " your bluetooth settings. Then start " +
+                            "this app and try again. App will close now.")
+                    .setPositiveButton("Got it!", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    })
+                    .show();
+
         }
+        bluetoothConnected = false;
+        }
+
 
 
     @Override
     public void onResume() {
         super.onResume();
 
-        //Get MAC address from DeviceListActivity via intent
-        Intent intent = getIntent();
-
-        //Get the MAC address from the DeviceListActivty via EXTRA
-        //create device and set the MAC address
-        BluetoothDevice device = btAdapter.getRemoteDevice(address);
-
-        try {
-            btSocket = createBluetoothSocket(device);
-        } catch (IOException e) {
-            Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_LONG).show();
+        if(!bluetoothConnected) {
+            bluetoothConnection();
         }
-        // Establish the Bluetooth socket connection.
-        try
-        {
-            btSocket.connect();
-        } catch (IOException e) {
-            try
-            {
-                btSocket.close();
-            } catch (IOException e2)
-            {
-                //insert code to deal with this
+        if(bluetoothConnected) {
+            //Get MAC address from DeviceListActivity via intent
+            Intent intent = getIntent();
+
+            //Get the MAC address from the DeviceListActivty via EXTRA
+            //create device and set the MAC address
+            BluetoothDevice device = btAdapter.getRemoteDevice(address);
+
+            try {
+                btSocket = createBluetoothSocket(device);
+            } catch (IOException e) {
+                Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_LONG).show();
             }
+            // Establish the Bluetooth socket connection.
+            try {
+                btSocket.connect();
+            } catch (IOException e) {
+                try {
+                    btSocket.close();
+                } catch (IOException e2) {
+                    //insert code to deal with this
+                }
+            }
+            mConnectedThread = new ConnectedThread(btSocket);
+            mConnectedThread.start();
         }
-        mConnectedThread = new ConnectedThread(btSocket);
-        mConnectedThread.start();
-
-        //I send a character when resuming.beginning transmission to check device is connected
-        //If it is not an exception will be thrown in the write method and finish() will be called
-        mConnectedThread.write("x");
     }
 
     private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
@@ -218,10 +246,18 @@ public class SaraMain extends Activity implements SensorEventListener {
           */
 
           //realised only value[1] is of use. That is the acc on the y-axis.
-          if(event.values[1] < 0){
+          if(event.values[1] < -0.5f){
               text2.setText("L");
-          }else if(event.values[1] > 0){
+              if(bluetoothConnected) {
+                  mConnectedThread.write(Float.toString(event.values[1]));
+              }
+          }else if(event.values[1] > 0.5f){
+              if(bluetoothConnected) {
+                  mConnectedThread.write(Float.toString(event.values[1]));
+              }
               text2.setText("R");
+          }else{
+              text2.setText("N");
           }
 
           //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
@@ -267,6 +303,8 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+
+            bluetoothConnection();
             return true;
         }
 
@@ -318,8 +356,9 @@ private class ConnectedThread extends Thread {
         } catch (IOException e) {
             //if you cannot write, close the application
             Toast.makeText(getBaseContext(), "Connection Failure", Toast.LENGTH_LONG).show();
-            finish();
-
+            bluetoothConnected = false;
+            tConnected.setText("Not connected!");
+            tConnected.setTextColor(Color.RED);
         }
     }
 }
