@@ -133,7 +133,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     /**
      * Initiate bluetooth connection with SARA. If SARA and the phone is not paired, it will promt
-     * a message to the user, telling hen to connect to SARA manually. 
+     * a message to the user, telling hen to connect to SARA manually.
      *
      */
     private void bluetoothConnection(){
@@ -148,6 +148,8 @@ public class SaraMain extends Activity implements SensorEventListener {
         }
 
         if (!btAdapter.isEnabled()) {
+            //if the bluetoothe adapter is not enabled, create a new intent that enables it,
+            //and listen for the answer in onActivityForResult();
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
@@ -183,9 +185,8 @@ public class SaraMain extends Activity implements SensorEventListener {
                         }
                     })
                     .show();
-
+            bluetoothConnected = false;
         }
-        bluetoothConnected = false;
         }
 
 
