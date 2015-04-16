@@ -60,7 +60,7 @@ public class SaraMain extends Activity implements SensorEventListener {
     //double acc[] = new double[3];
     double accY;
     private SensorManager sensorManager;
-    TextView text1, text2, tConnected;
+    TextView text1, text2, tConnected, tV1, tV2, tV3;
 
     Boolean bluetoothEnable = true;
     Boolean bluetoothConnected = false;
@@ -89,6 +89,9 @@ public class SaraMain extends Activity implements SensorEventListener {
         tConnected = (TextView) findViewById(R.id.tConnected);
         text1 = (TextView) findViewById(R.id.textView);
         text2 = (TextView) findViewById(R.id.textView2);
+        tV1 = (TextView) findViewById(R.id.textView5);
+        tV2 = (TextView) findViewById(R.id.textView4);
+        tV3 = (TextView) findViewById(R.id.textView3);
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
 
         //Set initial value to 50, middle of seekbar.
@@ -249,9 +252,8 @@ public class SaraMain extends Activity implements SensorEventListener {
           }
           */
 
-          int val = (int) (event.values[1] + 9)*10; //Cast to int, floor the value;
-          char send = (char) val; //cast to byte.
-
+          char send = convertAcc(event.values[1]);
+          /*
           //realised only value[1] is of use. That is the acc on the y-axis.
           if(event.values[1] < -0.5f){
               text2.setText("L");
@@ -260,15 +262,31 @@ public class SaraMain extends Activity implements SensorEventListener {
           }else{
               text2.setText("N");
           }
-          if(bluetoothConnected) mConnectedThread.write(send, (char) 250);
+
 
           //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
           text2.setRotation(event.values[1]*-5+90);
+          */
 
+          if(bluetoothConnected) mConnectedThread.write(send, (char) 250);
 
       }
 
 
+    }
+
+    private char convertAcc(float in){
+        char c;
+        char ret;
+        float ut = in*2f;
+        int utInt = (int) ut;
+        c = (char) utInt;
+
+            ret = (char) (85-(utInt*1.1));
+       // tV1.setText("Send: " + (int) ret);
+       // tV2.setText("Sensor: " + in );
+
+        return ret ;
     }
 
     //Has to be defined when implementing sensorEventListener
@@ -357,6 +375,7 @@ private class ConnectedThread extends Thread {
             }
         }
     }
+
     //write method
     public void write(char input, char type) {
         byte[] msgBuffer = {(byte) type, (byte) (input)};
