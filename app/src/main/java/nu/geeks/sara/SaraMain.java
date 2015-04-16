@@ -160,11 +160,10 @@ public class SaraMain extends Activity implements SensorEventListener {
         if (pairedDevices.size() > 0) {
             // Loop through paired devices
             for (BluetoothDevice device : pairedDevices) {
-                // Add the name and address to an array adapter to show in a ListView
                 if(device.getName().equals("HC-06")){
+                    //If the paired device is HC-06, SARA is connected. Else ignore.
                     address = device.getAddress();
-                    Toast.makeText(getApplicationContext(), "CONNECTED TO SARA!", Toast.LENGTH_LONG).show();
-                    tConnected.setText("Connected");
+                   // Toast.makeText(getApplicationContext(), "CONNECTED TO SARA!", Toast.LENGTH_LONG).show();
                     tConnected.setTextColor(Color.GREEN);
                     bluetoothConnected = true;
                 }
@@ -196,6 +195,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         super.onResume();
 
         if(!bluetoothConnected) {
+            //If bluetooth is not connected when app starts, try and connect it.
             bluetoothConnection();
         }
         if(bluetoothConnected) {
@@ -312,8 +312,13 @@ public class SaraMain extends Activity implements SensorEventListener {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        finish();
+    }
 
-//create new class for connect thread
+    //create new class for connect thread
 private class ConnectedThread extends Thread {
     private final InputStream mmInStream;
     private final OutputStream mmOutStream;
@@ -327,7 +332,9 @@ private class ConnectedThread extends Thread {
             //Create I/O streams for connection
             tmpIn = socket.getInputStream();
             tmpOut = socket.getOutputStream();
-        } catch (IOException e) { }
+        } catch (IOException e) {
+            Toast.makeText(getApplicationContext(), "No socket", Toast.LENGTH_LONG).show();
+        }
 
         mmInStream = tmpIn;
         mmOutStream = tmpOut;
@@ -352,16 +359,24 @@ private class ConnectedThread extends Thread {
     //write method
     public void write(String input) {
         byte[] msgBuffer = input.getBytes();           //converts entered String into bytes
+        boolean sent = true;
         try {
             mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
+
         } catch (IOException e) {
             //if you cannot write, close the application
-            Toast.makeText(getBaseContext(), "Connection Failure", Toast.LENGTH_LONG).show();
+            Toast.makeText(getBaseContext(), "Couldn't send to bluetooth", Toast.LENGTH_LONG).show();
             bluetoothConnected = false;
             tConnected.setText("Not connected!");
             tConnected.setTextColor(Color.RED);
+            sent = false;
+        }
+        if(sent){
+            tConnected.setText(msgBuffer.toString());
         }
     }
+
+
 }
 }
 
