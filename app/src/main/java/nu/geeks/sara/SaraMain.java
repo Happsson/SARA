@@ -114,7 +114,8 @@ public class SaraMain extends Activity implements SensorEventListener {
                  */
                 text1.setText("Speed: " + (progress - 50)/5);
                 if(bluetoothConnected) {
-                    mConnectedThread.write(Integer.toString(progress));
+                    char value = (char) (progress / 10);
+                    mConnectedThread.write(value, (char) 101);
                 }
             }
 
@@ -126,6 +127,8 @@ public class SaraMain extends Activity implements SensorEventListener {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 //if user lets go of gas pedal, speed is set to 0.
                 seekBar.setProgress(50);
+                tConnected.setText("Not sending");
+                tConnected.setTextColor(Color.RED);
             }
         });
 
@@ -148,7 +151,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         }
 
         if (!btAdapter.isEnabled()) {
-            //if the bluetoothe adapter is not enabled, create a new intent that enables it,
+            //if the bluetooth adapter is not enabled, create a new intent that enables it,
             //and listen for the answer in onActivityForResult();
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
@@ -186,7 +189,7 @@ public class SaraMain extends Activity implements SensorEventListener {
                     .show();
             bluetoothConnected = false;
         }
-        }
+    }
 
 
 
@@ -246,19 +249,26 @@ public class SaraMain extends Activity implements SensorEventListener {
           }
           */
 
+          int val = (int) event.values[1] + 9; //Cast to int, floor the value;
+          char send = (char) val; //cast to byte.
+
           //realised only value[1] is of use. That is the acc on the y-axis.
           if(event.values[1] < -0.5f){
               text2.setText("L");
+
+
               if(bluetoothConnected) {
-                  mConnectedThread.write(Float.toString(event.values[1]));
+                  mConnectedThread.write(send, (char) 100);
               }
           }else if(event.values[1] > 0.5f){
               if(bluetoothConnected) {
-                  mConnectedThread.write(Float.toString(event.values[1]));
+                  mConnectedThread.write(send, (char) 100);
               }
               text2.setText("R");
           }else{
               text2.setText("N");
+              tConnected.setText("Not sending");
+              tConnected.setTextColor(Color.RED);
           }
 
           //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
@@ -357,14 +367,14 @@ private class ConnectedThread extends Thread {
         }
     }
     //write method
-    public void write(String input) {
-        byte[] msgBuffer = input.getBytes();           //converts entered String into bytes
+    public void write(char input, char type) {
+        byte[] msgBuffer = {(byte) type, (byte) (input)};
         boolean sent = true;
+
         try {
             mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
 
         } catch (IOException e) {
-            //if you cannot write, close the application
             Toast.makeText(getBaseContext(), "Couldn't send to bluetooth", Toast.LENGTH_LONG).show();
             bluetoothConnected = false;
             tConnected.setText("Not connected!");
@@ -372,8 +382,10 @@ private class ConnectedThread extends Thread {
             sent = false;
         }
         if(sent){
-            tConnected.setText(msgBuffer.toString());
+            tConnected.setText("Sending data");
+            tConnected.setTextColor(Color.GREEN);
         }
+
     }
 
 
