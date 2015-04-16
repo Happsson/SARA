@@ -115,7 +115,7 @@ public class SaraMain extends Activity implements SensorEventListener {
                 text1.setText("Speed: " + (progress - 50)/5);
                 if(bluetoothConnected) {
                     char value = (char) (progress / 10);
-                    mConnectedThread.write(value, (char) 101);
+                    mConnectedThread.write(value, (char) 251);
                 }
             }
 
@@ -249,27 +249,18 @@ public class SaraMain extends Activity implements SensorEventListener {
           }
           */
 
-          int val = (int) event.values[1] + 9; //Cast to int, floor the value;
+          int val = (int) (event.values[1] + 9)*10; //Cast to int, floor the value;
           char send = (char) val; //cast to byte.
 
           //realised only value[1] is of use. That is the acc on the y-axis.
           if(event.values[1] < -0.5f){
               text2.setText("L");
-
-
-              if(bluetoothConnected) {
-                  mConnectedThread.write(send, (char) 100);
-              }
           }else if(event.values[1] > 0.5f){
-              if(bluetoothConnected) {
-                  mConnectedThread.write(send, (char) 100);
-              }
               text2.setText("R");
           }else{
               text2.setText("N");
-              tConnected.setText("Not sending");
-              tConnected.setTextColor(Color.RED);
           }
+          if(bluetoothConnected) mConnectedThread.write(send, (char) 250);
 
           //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
           text2.setRotation(event.values[1]*-5+90);
@@ -370,6 +361,8 @@ private class ConnectedThread extends Thread {
     public void write(char input, char type) {
         byte[] msgBuffer = {(byte) type, (byte) (input)};
         boolean sent = true;
+
+
 
         try {
             mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
