@@ -79,7 +79,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_UI);
 
         /*
         Everything created in the XML-view (drag and drop view) must be linked in code to be useful.
