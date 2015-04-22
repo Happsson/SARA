@@ -58,7 +58,6 @@ public class SaraMain extends Activity implements SensorEventListener {
     final int handlerState = 0;                        //used to identify handler message
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket = null;
-    private StringBuilder recDataString = new StringBuilder();
     private ConnectedThread mConnectedThread;
 
     LinearLayout steeringSettings;
@@ -67,11 +66,10 @@ public class SaraMain extends Activity implements SensorEventListener {
     int steeringCorrectionValue = 0;
     int steeringMaxValue = 10;
 
-    //double acc[] = new double[3];
-    double accY;
     private SensorManager sensorManager;
     TextView tConnected, tSettingMax, tSteeringCorr;
 
+    private char gasPosition = 50;
 
 
     boolean bluetoothEnable = true;
@@ -115,12 +113,6 @@ public class SaraMain extends Activity implements SensorEventListener {
         //Set initial value to 50, middle of seekbar.
         bar.setProgress(50);
 
-
-        /*
-        Set initial text. Can just as easily be done in the XML-view or strings.xml (just a
-        weird way to set final strings for buttons en texts and such.)
-        */
-
         /*
         OnSeekBarChangeListener will be called upon when the user touch the seekbar.
         This is interrupt based, will be called automagically.
@@ -132,12 +124,7 @@ public class SaraMain extends Activity implements SensorEventListener {
                 /*
                 Simply change the textvalue to the current progress.
                  */
-
-
-                if(bluetoothConnected) {
-                    char value = (char) (progress / 10);
-                    mConnectedThread.write(value, (char) 251);
-                }
+                gasPosition = (char) progress;
             }
 
             @Override
@@ -147,9 +134,8 @@ public class SaraMain extends Activity implements SensorEventListener {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 //if user lets go of gas pedal, speed is set to 0.
+                gasPosition = 50;
                 seekBar.setProgress(50);
-                tConnected.setText("Not sending");
-                tConnected.setTextColor(Color.RED);
             }
         });
 
@@ -267,23 +253,8 @@ public class SaraMain extends Activity implements SensorEventListener {
     public void onSensorChanged(SensorEvent event){
       if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
 
-          char send = convertAcc(event.values[1]);
-          /*
-          //realised only value[1] is of use. That is the acc on the y-axis.
-          if(event.values[1] < -0.5f){
-              text2.setText("L");
-          }else if(event.values[1] > 0.5f){
-              text2.setText("R");
-          }else{
-              text2.setText("N");
-          }
-
-
-          //Just needed some way to show amount of tilting. The letter R or L will tilt with the screen
-          text2.setRotation(event.values[1]*-5+90);
-          */
-
-          if(bluetoothConnected) mConnectedThread.write(send, (char) 250);
+          char sendSteering = convertAcc(event.values[1]);
+          if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition);
 
       }
 
@@ -406,6 +377,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     //create new class for connect thread
 private class ConnectedThread extends Thread {
+
     private final InputStream mmInStream;
     private final OutputStream mmOutStream;
 
