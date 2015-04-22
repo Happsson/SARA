@@ -39,10 +39,6 @@ The app is locked in portrait mode. This is done in AndroidManifest.xml with the
          android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
 
  */
-
-
-
-
 public class SaraMain extends Activity implements SensorEventListener {
 
 
@@ -211,32 +207,39 @@ public class SaraMain extends Activity implements SensorEventListener {
             bluetoothConnection();
         }
         if(bluetoothConnected) {
-            //Get MAC address from DeviceListActivity via intent
-            Intent intent = getIntent();
-
-            //Get the MAC address from the DeviceListActivty via EXTRA
-            //create device and set the MAC address
-            BluetoothDevice device = btAdapter.getRemoteDevice(address);
-
-            try {
-                btSocket = createBluetoothSocket(device);
-            } catch (IOException e) {
-                Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_LONG).show();
-            }
-            // Establish the Bluetooth socket connection.
-            try {
-                btSocket.connect();
-            } catch (IOException e) {
-                try {
-                    btSocket.close();
-                } catch (IOException e2) {
-                    //insert code to deal with this
-                }
-            }
-            mConnectedThread = new ConnectedThread(btSocket);
-            mConnectedThread.start();
+            bluetoothStep2();
         }
+
     }
+
+    private void bluetoothStep2() {
+        //Get MAC address from DeviceListActivity via intent
+        Intent intent = getIntent();
+
+        //Get the MAC address from the DeviceListActivty via EXTRA
+        //create device and set the MAC address
+        BluetoothDevice device = btAdapter.getRemoteDevice(address);
+
+        try {
+            btSocket = createBluetoothSocket(device);
+        } catch (IOException e) {
+            Toast.makeText(getBaseContext(), "Socket creation failed", Toast.LENGTH_LONG).show();
+        }
+        // Establish the Bluetooth socket connection.
+        try {
+            btSocket.connect();
+        } catch (IOException e) {
+            try {
+                btSocket.close();
+            } catch (IOException e2) {
+                //insert code to deal with this
+            }
+        }
+        mConnectedThread = new ConnectedThread(btSocket);
+        mConnectedThread.start();
+
+    }
+
 
     private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
 
@@ -300,7 +303,11 @@ public class SaraMain extends Activity implements SensorEventListener {
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
 
+            btAdapter = null;
+            btSocket = null;
+            mConnectedThread = null;
             bluetoothConnection();
+            bluetoothStep2();
             return true;
         }
         if(id == R.id.finetune){
@@ -370,8 +377,8 @@ public class SaraMain extends Activity implements SensorEventListener {
 
 
     @Override
-    protected void onPause() {
-        super.onPause();
+    protected void onStop() {
+        super.onStop();
         //If app is exited, stop car.
         mConnectedThread.write((char) convertAcc(0), (char) 50);
         sendAllowed = false;
@@ -438,7 +445,7 @@ private class ConnectedThread extends Thread {
                 sent = false;
             }
             if (sent) {
-                tConnected.setText("" + (int) input);
+                tConnected.setText("" + (int) input + " ," +(int) type);
                 tConnected.setTextColor(Color.GREEN);
             }
         }
