@@ -55,7 +55,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
 
     int steeringCorrectionValue = 0;
-    int steeringMaxValue = 10;
+    int steeringMaxValue = 16;
 
     private SensorManager sensorManager;
     TextView tConnected, tSettingMax, tSteeringCorr;
