@@ -41,6 +41,15 @@
             android:indeterminate="false"
             android:max="40"
             android:progress="20" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="Small Text"
+            android:id="@+id/textView"
+            android:layout_gravity="center_horizontal" />
+
     </LinearLayout>
 
     <SeekBar
@@ -61,5 +70,15 @@
         android:textColor="#ffff0f00"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="100dp"
+        android:layout_height="200dp"
+        android:gravity="center"
+        android:layout_centerVertical="true"
+        android:background="@drawable/horn"
+        android:id="@+id/button"
+
+        />
 
 </RelativeLayout>

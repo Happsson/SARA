@@ -16,7 +16,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -46,10 +48,14 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     Handler bluetoothIn;
 
+    Button horn;
+
     final int handlerState = 0;                        //used to identify handler message
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket = null;
     private ConnectedThread mConnectedThread;
+
+    char hornSend = 0;
 
     LinearLayout steeringSettings;
 
@@ -82,6 +88,8 @@ public class SaraMain extends Activity implements SensorEventListener {
         setContentView(R.layout.activity_sara_main);
 
         sendAllowed = true;
+
+        horn = (Button) findViewById(R.id.button);
 
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
@@ -131,6 +139,21 @@ public class SaraMain extends Activity implements SensorEventListener {
                 seekBar.setProgress(50);
             }
         });
+
+
+        horn.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if(event.getAction() == MotionEvent.ACTION_DOWN){
+                    hornSend = 1;
+                }
+                if(event.getAction() == MotionEvent.ACTION_UP){
+                    hornSend = 0;
+                }
+                return false;
+            }
+        });
+
 
     }
 
@@ -256,7 +279,7 @@ public class SaraMain extends Activity implements SensorEventListener {
       if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
 
           char sendSteering = convertAcc(event.values[1]);
-          if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition);
+          if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition, hornSend);
 
       }
 
@@ -380,7 +403,7 @@ public class SaraMain extends Activity implements SensorEventListener {
     protected void onStop() {
         super.onStop();
         //If app is exited, stop car.
-        mConnectedThread.write((char) convertAcc(0), (char) 50);
+        mConnectedThread.write((char) convertAcc(0), (char) 50, (char) 0);
         sendAllowed = false;
         finish();
     }
@@ -428,8 +451,8 @@ private class ConnectedThread extends Thread {
     }
 
     //write method
-    public void write(char input, char type) {
-        byte[] msgBuffer = {(byte) input, (byte) (type)};
+    public void write(char steering, char gas, char horn) {
+        byte[] msgBuffer = {(byte) steering, (byte) gas, (byte) horn};
         boolean sent = true;
 
         if(sendAllowed){
@@ -445,13 +468,13 @@ private class ConnectedThread extends Thread {
                 sent = false;
             }
             if (sent) {
-                tConnected.setText("" + (int) input + " ," +(int) type);
+                tConnected.setText("" + (int) steering + " , " +(int) gas + " , " + (int) horn);
                 tConnected.setTextColor(Color.GREEN);
             }
+
         }
 
     }
-
 
 }
 }
