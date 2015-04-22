@@ -13,6 +13,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -50,12 +51,16 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     Button horn;
 
+    boolean playingMusic = false;
+
     final int handlerState = 0;                        //used to identify handler message
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket = null;
     private ConnectedThread mConnectedThread;
 
     char hornSend = 0;
+
+    char sendSteering;
 
     LinearLayout steeringSettings;
 
@@ -78,11 +83,15 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
+    private int musicCounter;
+    private int music;
 
     private final int REQUEST_ENABLE_BT = 1234;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        musicCounter = 0;
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
@@ -109,6 +118,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
 
         setSeekbars();
+
 
 
         //Set initial value to 50, middle of seekbar.
@@ -144,17 +154,53 @@ public class SaraMain extends Activity implements SensorEventListener {
         horn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if(event.getAction() == MotionEvent.ACTION_DOWN){
-                    hornSend = 1;
+                CountDownTimer t = new CountDownTimer(3000, 1) {
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        musicCounter++;
+                        generateMusic();
+
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        musicCounter = 0;
+                        playingMusic = false;
+
+                    }
+                };
+
+
+                if(event.getAction() == MotionEvent.ACTION_DOWN) {
+                    if(!playingMusic){
+                        t.start();
+                        playingMusic = true;
+                    }
                 }
                 if(event.getAction() == MotionEvent.ACTION_UP){
-                    hornSend = 0;
+
+
                 }
                 return false;
             }
         });
 
 
+    }
+
+    private void generateMusic(){
+      char ret = 'Q';
+      if(musicCounter < 100) ret = 'A';
+      else if(musicCounter > 101 && musicCounter < 200) ret = 'Q'; //Q == noTone;
+      else if(musicCounter > 201 && musicCounter < 300) ret = 'A';
+      else if(musicCounter > 301 && musicCounter < 400) ret = 'Q';
+      else if(musicCounter > 401 && musicCounter < 500) ret = 'C';
+      else if(musicCounter > 501 && musicCounter < 600) ret = 'Q';
+      else if(musicCounter > 601 && musicCounter < 700) ret = 'D';
+      else if(musicCounter > 701 && musicCounter < 800) ret = 'Q';
+      else if(musicCounter > 801 && musicCounter < 900) ret = 'G';
+
+        hornSend = ret;
     }
 
     /**
@@ -278,8 +324,10 @@ public class SaraMain extends Activity implements SensorEventListener {
     public void onSensorChanged(SensorEvent event){
       if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
 
-          char sendSteering = convertAcc(event.values[1]);
+          char sst = convertAcc(event.values[1]);
+          sendSteering = sst;
           if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition, hornSend);
+
 
       }
 
@@ -287,7 +335,7 @@ public class SaraMain extends Activity implements SensorEventListener {
     }
 
     private char convertAcc(float in){
-        char c;
+
         char ret;
         float ut = in*2f;
         int utInt = (int) ut;
@@ -452,7 +500,7 @@ private class ConnectedThread extends Thread {
 
     //write method
     public void write(char steering, char gas, char horn) {
-        byte[] msgBuffer = {(byte) steering, (byte) gas, (byte) horn};
+        byte[] msgBuffer = {(byte) steering, (byte) gas, (byte) hornSend};
         boolean sent = true;
 
         if(sendAllowed){
@@ -468,7 +516,7 @@ private class ConnectedThread extends Thread {
                 sent = false;
             }
             if (sent) {
-                tConnected.setText("" + (int) steering + " , " +(int) gas + " , " + (int) horn);
+                tConnected.setText("" + (int) steering + " , " +(int) gas + " , " +  hornSend + " c: " + musicCounter);
                 tConnected.setTextColor(Color.GREEN);
             }
 
