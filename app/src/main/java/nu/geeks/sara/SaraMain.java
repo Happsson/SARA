@@ -7,7 +7,6 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -15,12 +14,9 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -29,9 +25,7 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Set;
-import java.util.TooManyListenersException;
 import java.util.UUID;
 
 
@@ -45,6 +39,7 @@ The app is locked in portrait mode. This is done in AndroidManifest.xml with the
          android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
 
  */
+
 
 
 
@@ -71,12 +66,12 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     private char gasPosition = 50;
 
+    boolean sendAllowed;
 
     boolean bluetoothEnable = true;
     boolean bluetoothConnected = false;
     boolean steeringSettingsVisible = false;
 
-    //SeekBar steeringMax, corrections, bar;
 
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -89,6 +84,8 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
+
+        sendAllowed = true;
 
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
@@ -207,6 +204,8 @@ public class SaraMain extends Activity implements SensorEventListener {
     public void onResume() {
         super.onResume();
 
+        sendAllowed = true;
+
         if(!bluetoothConnected) {
             //If bluetooth is not connected when app starts, try and connect it.
             bluetoothConnection();
@@ -319,7 +318,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         final SeekBar corrections = (SeekBar) findViewById(R.id.sSteeringCorr);
         final SeekBar steeringMax = (SeekBar) findViewById(R.id.sSteeringMax);
 
-        corrections.setProgress(steeringCorrectionValue+20);
+        corrections.setProgress(steeringCorrectionValue + 20);
         steeringMax.setProgress(steeringMaxValue);
 
 
@@ -369,11 +368,17 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     }
 
+
     @Override
     protected void onPause() {
         super.onPause();
+        //If app is exited, stop car.
+        mConnectedThread.write((char) convertAcc(0), (char) 50);
+        sendAllowed = false;
         finish();
     }
+
+
 
     //create new class for connect thread
 private class ConnectedThread extends Thread {
@@ -417,24 +422,25 @@ private class ConnectedThread extends Thread {
 
     //write method
     public void write(char input, char type) {
-        byte[] msgBuffer = {(byte) type, (byte) (input)};
+        byte[] msgBuffer = {(byte) input, (byte) (type)};
         boolean sent = true;
 
+        if(sendAllowed){
 
+            try {
+                mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
 
-        try {
-            mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
-
-        } catch (IOException e) {
-            Toast.makeText(getBaseContext(), "Couldn't send to bluetooth", Toast.LENGTH_LONG).show();
-            bluetoothConnected = false;
-            tConnected.setText("Not connected!");
-            tConnected.setTextColor(Color.RED);
-            sent = false;
-        }
-        if(sent){
-            tConnected.setText(""+(int) input);
-            tConnected.setTextColor(Color.GREEN);
+            } catch (IOException e) {
+                Toast.makeText(getBaseContext(), "Couldn't send to bluetooth", Toast.LENGTH_LONG).show();
+                bluetoothConnected = false;
+                tConnected.setText("Not connected!");
+                tConnected.setTextColor(Color.RED);
+                sent = false;
+            }
+            if (sent) {
+                tConnected.setText("" + (int) input);
+                tConnected.setTextColor(Color.GREEN);
+            }
         }
 
     }
