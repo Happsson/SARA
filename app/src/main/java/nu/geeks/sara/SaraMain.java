@@ -15,9 +15,13 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,6 +47,7 @@ The app is locked in portrait mode. This is done in AndroidManifest.xml with the
  */
 
 
+
 public class SaraMain extends Activity implements SensorEventListener {
 
 
@@ -56,14 +61,24 @@ public class SaraMain extends Activity implements SensorEventListener {
     private StringBuilder recDataString = new StringBuilder();
     private ConnectedThread mConnectedThread;
 
+    LinearLayout steeringSettings;
+
+
+    int steeringCorrectionValue = 0;
+    int steeringMaxValue = 10;
 
     //double acc[] = new double[3];
     double accY;
     private SensorManager sensorManager;
-    TextView text1, text2, tConnected, tV1, tV2, tV3;
+    TextView tConnected, tSettingMax, tSteeringCorr;
 
-    Boolean bluetoothEnable = true;
-    Boolean bluetoothConnected = false;
+
+
+    boolean bluetoothEnable = true;
+    boolean bluetoothConnected = false;
+    boolean steeringSettingsVisible = false;
+
+    //SeekBar steeringMax, corrections, bar;
 
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -87,22 +102,24 @@ public class SaraMain extends Activity implements SensorEventListener {
         Must be final.
          */
         tConnected = (TextView) findViewById(R.id.tConnected);
-        text1 = (TextView) findViewById(R.id.textView);
-        text2 = (TextView) findViewById(R.id.textView2);
-        tV1 = (TextView) findViewById(R.id.textView5);
-        tV2 = (TextView) findViewById(R.id.textView4);
-        tV3 = (TextView) findViewById(R.id.textView3);
+        tSettingMax = (TextView) findViewById(R.id.tMaxSteering);
+        tSteeringCorr = (TextView) findViewById(R.id.tSteering);
+
+        steeringSettings = (LinearLayout) findViewById(R.id.steeringSettings);
+
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
+
+        setSeekbars();
+
 
         //Set initial value to 50, middle of seekbar.
         bar.setProgress(50);
+
 
         /*
         Set initial text. Can just as easily be done in the XML-view or strings.xml (just a
         weird way to set final strings for buttons en texts and such.)
         */
-        text1.setText("Speed: 0");
-
 
         /*
         OnSeekBarChangeListener will be called upon when the user touch the seekbar.
@@ -115,7 +132,8 @@ public class SaraMain extends Activity implements SensorEventListener {
                 /*
                 Simply change the textvalue to the current progress.
                  */
-                text1.setText("Speed: " + (progress - 50)/5);
+
+
                 if(bluetoothConnected) {
                     char value = (char) (progress / 10);
                     mConnectedThread.write(value, (char) 251);
@@ -154,6 +172,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         }
 
         if (!btAdapter.isEnabled()) {
+
             //if the bluetooth adapter is not enabled, create a new intent that enables it,
             //and listen for the answer in onActivityForResult();
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -164,8 +183,10 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         // If there are paired devices
         if (pairedDevices.size() > 0) {
+
             // Loop through paired devices
             for (BluetoothDevice device : pairedDevices) {
+
                 if(device.getName().equals("HC-06")){
                     //If the paired device is HC-06, SARA is connected. Else ignore.
                     address = device.getAddress();
@@ -246,12 +267,6 @@ public class SaraMain extends Activity implements SensorEventListener {
     public void onSensorChanged(SensorEvent event){
       if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
 
-          /*
-          for(int i = 0; i < 3; i++){
-              acc[i] = event.values[i];
-          }
-          */
-
           char send = convertAcc(event.values[1]);
           /*
           //realised only value[1] is of use. That is the acc on the y-axis.
@@ -280,13 +295,10 @@ public class SaraMain extends Activity implements SensorEventListener {
         char ret;
         float ut = in*2f;
         int utInt = (int) ut;
-        c = (char) utInt;
 
-            ret = (char) (85-(utInt*1.1));
-       // tV1.setText("Send: " + (int) ret);
-       // tV2.setText("Sensor: " + in );
+        ret = (char) (85+steeringCorrectionValue-(utInt * (steeringMaxValue/10f)));
 
-        return ret ;
+        return ret;
     }
 
     //Has to be defined when implementing sensorEventListener
@@ -303,12 +315,6 @@ public class SaraMain extends Activity implements SensorEventListener {
         }
 
     }
-
-/*
-    Stuff below is auto generated code. Don't think we need to care about it.
-     */
-
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -327,8 +333,69 @@ public class SaraMain extends Activity implements SensorEventListener {
             bluetoothConnection();
             return true;
         }
+        if(id == R.id.finetune){
+            steeringSettingsVisible = ! steeringSettingsVisible;
+            if(steeringSettingsVisible) steeringSettings.setVisibility(View.VISIBLE);
+            if(!steeringSettingsVisible) steeringSettings.setVisibility(View.INVISIBLE);
+            return true;
 
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void setSeekbars() {
+
+        final SeekBar corrections = (SeekBar) findViewById(R.id.sSteeringCorr);
+        final SeekBar steeringMax = (SeekBar) findViewById(R.id.sSteeringMax);
+
+        corrections.setProgress(steeringCorrectionValue+20);
+        steeringMax.setProgress(steeringMaxValue);
+
+
+
+
+        corrections.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                steeringCorrectionValue = progress-20;
+                if((progress-20)>0) {
+                    tSteeringCorr.setText("Steering correction: +" + (progress - 20));
+                }else{
+                    tSteeringCorr.setText("Steering correction: " + (progress - 20));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        steeringMax.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                steeringMaxValue = progress;
+
+                tSettingMax.setText("Steering max * " + (progress/10f));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+
     }
 
     @Override
@@ -394,7 +461,7 @@ private class ConnectedThread extends Thread {
             sent = false;
         }
         if(sent){
-            tConnected.setText("Sending data");
+            tConnected.setText(""+(int) input);
             tConnected.setTextColor(Color.GREEN);
         }
 

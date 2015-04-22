@@ -2,4 +2,6 @@
     xmlns:tools="http://schemas.android.com/tools" tools:context=".SaraMain">
     <item android:id="@+id/action_settings" android:title="Connect"
         android:orderInCategory="100" android:showAsAction="never" />
+    <item android:id="@+id/finetune" android:title="Fine Tune"
+        android:orderInCategory="90" android:showAsAction="never" />
 </menu>
