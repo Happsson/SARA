@@ -91,14 +91,16 @@ public class SaraMain extends Activity implements SensorEventListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
+        //Music counter is used instead of delays to calculate length of
         musicCounter = 0;
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
 
+        //This is used to stop the app from sending to bluetooth when in the process of closing down.
         sendAllowed = true;
 
-        horn = (Button) findViewById(R.id.button);
+
 
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
@@ -107,12 +109,11 @@ public class SaraMain extends Activity implements SensorEventListener {
         /*
         Everything created in the XML-view (drag and drop view) must be linked in code to be useful.
         "textView" in R.id.textView is the name given in XML-view.
-        Must be final.
          */
         tConnected = (TextView) findViewById(R.id.tConnected);
         tSettingMax = (TextView) findViewById(R.id.tMaxSteering);
         tSteeringCorr = (TextView) findViewById(R.id.tSteering);
-
+        horn = (Button) findViewById(R.id.button);
         steeringSettings = (LinearLayout) findViewById(R.id.steeringSettings);
 
         final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
@@ -150,7 +151,8 @@ public class SaraMain extends Activity implements SensorEventListener {
             }
         });
 
-
+        //Note that this is not onClickListener, this is because we need to be able to differentiate
+        //between if the touch down event and the release event.
         horn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -188,6 +190,10 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     }
 
+    /**
+     * This is the method that generates the music when user presses the horn-button.
+     *
+     */
     private void generateMusic(){
       char ret = 'Q';
       if(musicCounter < 100) ret = 'A';
@@ -269,13 +275,15 @@ public class SaraMain extends Activity implements SensorEventListener {
     public void onResume() {
         super.onResume();
 
-        sendAllowed = true;
+        sendAllowed = true; //Device is active, make it allowed to send bluetooth data.
 
         if(!bluetoothConnected) {
             //If bluetooth is not connected when app starts, try and connect it.
+            //this first step checks if the device has bluetooth on and if SARA is paired.
             bluetoothConnection();
         }
         if(bluetoothConnected) {
+            //bluetooth setup is done in two steps. This steps sets up the connection with SARA.
             bluetoothStep2();
         }
 
@@ -326,6 +334,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
           char sst = convertAcc(event.values[1]);
           sendSteering = sst;
+
           if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition, hornSend);
 
 
