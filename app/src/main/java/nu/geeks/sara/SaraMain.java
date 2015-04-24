@@ -7,7 +7,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -15,13 +17,20 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.util.DisplayMetrics;
+import android.view.Display;
+import android.view.DragEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,6 +60,8 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     Button horn;
 
+
+
     boolean playingMusic = false;
 
     final int handlerState = 0;                        //used to identify handler message
@@ -70,6 +81,7 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     private SensorManager sensorManager;
     TextView tConnected, tSettingMax, tSteeringCorr;
+    Switch distanceSwitch;
 
     private char gasPosition = 50;
 
@@ -79,12 +91,16 @@ public class SaraMain extends Activity implements SensorEventListener {
     boolean bluetoothConnected = false;
     boolean steeringSettingsVisible = false;
 
+    boolean distanceSencorActive;
 
+    private float currentYvalue = 0;
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     private int musicCounter;
     private int music;
+
+    private int screenHeight = 0;
 
     private final int REQUEST_ENABLE_BT = 1234;
 
@@ -94,17 +110,66 @@ public class SaraMain extends Activity implements SensorEventListener {
         //Music counter is used instead of delays to calculate length of
         musicCounter = 0;
 
+
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sara_main);
 
         //This is used to stop the app from sending to bluetooth when in the process of closing down.
         sendAllowed = true;
 
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        screenHeight = size.y - getStatusBarHeight();
+
+        gasPosition = 50;
+
+        RelativeLayout root = (RelativeLayout) findViewById(R.id.root);
+
+        root.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                float y = event.getY();
+
+                float value = (((100-(y / screenHeight) * 100) - 30) * 1.5f);
+                if(value < 0) currentYvalue = 0;
+                else if( value > 100) currentYvalue = 100;
+                else currentYvalue = value;
+
+                gasPosition = (char) currentYvalue;
 
 
+               // tConnected.setText("s: " + screenHeight + ", v: " +currentYvalue);
+
+                if(event.getAction() == MotionEvent.ACTION_UP){
+                    gasPosition = 50;
+                }
+
+                return true;
+            }
+
+
+        });
+
+        root.setOnDragListener(new View.OnDragListener() {
+            @Override
+            public boolean onDrag(View v, DragEvent event) {
+
+                return false;
+            }
+        });
+
+        distanceSwitch = (Switch) findViewById(R.id.switch1);
         //Initializing sensor, creating a sensor manager.
         sensorManager=(SensorManager) getSystemService(SENSOR_SERVICE);
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_UI);
+
+        distanceSencorActive = distanceSwitch.isChecked();
+
+        distanceSwitch.setChecked(true);
+
+
 
         /*
         Everything created in the XML-view (drag and drop view) must be linked in code to be useful.
@@ -116,40 +181,19 @@ public class SaraMain extends Activity implements SensorEventListener {
         horn = (Button) findViewById(R.id.button);
         steeringSettings = (LinearLayout) findViewById(R.id.steeringSettings);
 
-        final SeekBar bar = (SeekBar) findViewById(R.id.seekBar);
+        distanceSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                distanceSencorActive = isChecked;
+
+
+            }
+        });
+
 
         setSeekbars();
 
 
-
-        //Set initial value to 50, middle of seekbar.
-        bar.setProgress(50);
-
-        /*
-        OnSeekBarChangeListener will be called upon when the user touch the seekbar.
-        This is interrupt based, will be called automagically.
-         */
-        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                /*
-                Simply change the textvalue to the current progress.
-                 */
-                gasPosition = (char) progress;
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                //if user lets go of gas pedal, speed is set to 0.
-                gasPosition = 50;
-                seekBar.setProgress(50);
-            }
-        });
 
         //Note that this is not onClickListener, this is because we need to be able to differentiate
         //between if the touch down event and the release event.
@@ -190,6 +234,15 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     }
 
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
+    }
+
     /**
      * This is the method that generates the music when user presses the horn-button.
      *
@@ -197,6 +250,7 @@ public class SaraMain extends Activity implements SensorEventListener {
     private void generateMusic(){
       char ret = 'Q';
       if(musicCounter < 100) ret = 'A';
+      /*
       else if(musicCounter > 101 && musicCounter < 200) ret = 'Q'; //Q == noTone;
       else if(musicCounter > 201 && musicCounter < 300) ret = 'A';
       else if(musicCounter > 301 && musicCounter < 400) ret = 'Q';
@@ -205,7 +259,7 @@ public class SaraMain extends Activity implements SensorEventListener {
       else if(musicCounter > 601 && musicCounter < 700) ret = 'D';
       else if(musicCounter > 701 && musicCounter < 800) ret = 'Q';
       else if(musicCounter > 801 && musicCounter < 900) ret = 'G';
-
+      */
         hornSend = ret;
     }
 
@@ -509,7 +563,12 @@ private class ConnectedThread extends Thread {
 
     //write method
     public void write(char steering, char gas, char horn) {
-        byte[] msgBuffer = {(byte) steering, (byte) gas, (byte) hornSend};
+
+        char dist = 0;
+        if(distanceSencorActive) dist = 1;
+
+
+        byte[] msgBuffer = {(byte) steering, (byte) gasPosition, (byte) hornSend, (byte) dist};
         boolean sent = true;
 
         if(sendAllowed){
@@ -525,7 +584,7 @@ private class ConnectedThread extends Thread {
                 sent = false;
             }
             if (sent) {
-                tConnected.setText("" + (int) steering + " , " +(int) gas + " , " +  hornSend + " c: " + musicCounter);
+                tConnected.setText("" + (int) steering + " , " +(int) gasPosition + " , " +  hornSend + " Dist: " + distanceSencorActive);
                 tConnected.setTextColor(Color.GREEN);
             }
 
