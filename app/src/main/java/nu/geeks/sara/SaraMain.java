@@ -168,8 +168,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         distanceSencorActive = distanceSwitch.isChecked();
 
         distanceSwitch.setChecked(true);
-
-
+        distanceSencorActive = distanceSwitch.isChecked();
 
         /*
         Everything created in the XML-view (drag and drop view) must be linked in code to be useful.
@@ -200,7 +199,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         horn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                CountDownTimer t = new CountDownTimer(3000, 1) {
+                CountDownTimer t = new CountDownTimer(100, 1) {
                     @Override
                     public void onTick(long millisUntilFinished) {
                         musicCounter++;
