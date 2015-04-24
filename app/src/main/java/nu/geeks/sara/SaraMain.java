@@ -8,6 +8,8 @@ import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.hardware.Sensor;
@@ -125,6 +127,11 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         gasPosition = 50;
 
+        Bitmap bitmap = Bitmap.createBitmap(size.x, screenHeight, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas( bitmap );
+
+
+
         RelativeLayout root = (RelativeLayout) findViewById(R.id.root);
 
         root.setOnTouchListener(new View.OnTouchListener() {
@@ -199,7 +206,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         horn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                CountDownTimer t = new CountDownTimer(100, 1) {
+                CountDownTimer t = new CountDownTimer(200, 1) {
                     @Override
                     public void onTick(long millisUntilFinished) {
                         musicCounter++;
