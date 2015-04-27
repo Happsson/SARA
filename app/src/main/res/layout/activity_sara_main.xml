@@ -28,6 +28,13 @@
         android:layout_alignParentBottom="true"
         android:text="tut!" />
 
+    <Button
+        android:layout_width="10dp"
+        android:layout_height="20dp"
+        android:layout_alignParentRight="true"
+        android:id="@+id/bGas"
+        android:background="#ff000000" />
+
     <Switch
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

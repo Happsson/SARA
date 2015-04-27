@@ -11,6 +11,8 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -42,16 +44,8 @@ import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
-
-/*
-The app is locked in portrait mode. This is done in AndroidManifest.xml with the lines:
-        android:screenOrientation="portrait"
-        android:configChanges="keyboardHidden|orientation"
-
- The titlebar (where the name of the app is, if you look in the XML-viewer, is also removed
- in the manifest with this line:
-         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
-
+/**
+ *
  */
 public class SaraMain extends Activity implements SensorEventListener {
 
@@ -99,26 +93,33 @@ public class SaraMain extends Activity implements SensorEventListener {
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    private int musicCounter;
-    private int music;
 
     private int screenHeight = 0;
 
     private final int REQUEST_ENABLE_BT = 1234;
 
+    private Button gas;
+
+
+    private PlayMusic music;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        //Music counter is used instead of delays to calculate length of
-        musicCounter = 0;
-
-
-
         super.onCreate(savedInstanceState);
+        //Music counter is used instead of delays to calculate length of
+
+
         setContentView(R.layout.activity_sara_main);
+
+        gas = (Button) findViewById(R.id.bGas);
+
 
         //This is used to stop the app from sending to bluetooth when in the process of closing down.
         sendAllowed = true;
+
+        music = new PlayMusic(false, 'G');
+        music.start();
 
         Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
@@ -127,8 +128,6 @@ public class SaraMain extends Activity implements SensorEventListener {
 
         gasPosition = 50;
 
-        Bitmap bitmap = Bitmap.createBitmap(size.x, screenHeight, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas( bitmap );
 
 
 
@@ -139,6 +138,9 @@ public class SaraMain extends Activity implements SensorEventListener {
             public boolean onTouch(View v, MotionEvent event) {
                 float y = event.getY();
 
+                gas.setY(event.getY()-10);
+
+
                 float value = (((100-(y / screenHeight) * 100) - 30) * 1.5f);
                 if(value < 0) currentYvalue = 0;
                 else if( value > 100) currentYvalue = 100;
@@ -146,11 +148,15 @@ public class SaraMain extends Activity implements SensorEventListener {
 
                 gasPosition = (char) currentYvalue;
 
+                if(bluetoothConnected) mConnectedThread.write ( ( byte ) 1 , gasPosition );
 
-               // tConnected.setText("s: " + screenHeight + ", v: " +currentYvalue);
+
+                // tConnected.setText("s: " + screenHeight + ", v: " +currentYvalue);
 
                 if(event.getAction() == MotionEvent.ACTION_UP){
                     gasPosition = 50;
+                    gas.setY(screenHeight/4);
+                    if(bluetoothConnected) mConnectedThread.write ( ( byte ) 1 , gasPosition );
                 }
 
                 return true;
@@ -166,6 +172,9 @@ public class SaraMain extends Activity implements SensorEventListener {
                 return false;
             }
         });
+
+
+
 
         distanceSwitch = (Switch) findViewById(R.id.switch1);
         //Initializing sensor, creating a sensor manager.
@@ -206,30 +215,14 @@ public class SaraMain extends Activity implements SensorEventListener {
         horn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                CountDownTimer t = new CountDownTimer(200, 1) {
-                    @Override
-                    public void onTick(long millisUntilFinished) {
-                        musicCounter++;
-                        generateMusic();
-
-                    }
-
-                    @Override
-                    public void onFinish() {
-                        musicCounter = 0;
-                        playingMusic = false;
-
-                    }
-                };
 
 
                 if(event.getAction() == MotionEvent.ACTION_DOWN) {
-                    if(!playingMusic){
-                        t.start();
-                        playingMusic = true;
-                    }
+
+                    music.startPlay();
                 }
                 if(event.getAction() == MotionEvent.ACTION_UP){
+                    music.stopPlay();
 
 
                 }
@@ -254,20 +247,12 @@ public class SaraMain extends Activity implements SensorEventListener {
      *
      */
     private void generateMusic(){
-      char ret = 'Q';
-      if(musicCounter < 100) ret = 'A';
-      /*
-      else if(musicCounter > 101 && musicCounter < 200) ret = 'Q'; //Q == noTone;
-      else if(musicCounter > 201 && musicCounter < 300) ret = 'A';
-      else if(musicCounter > 301 && musicCounter < 400) ret = 'Q';
-      else if(musicCounter > 401 && musicCounter < 500) ret = 'C';
-      else if(musicCounter > 501 && musicCounter < 600) ret = 'Q';
-      else if(musicCounter > 601 && musicCounter < 700) ret = 'D';
-      else if(musicCounter > 701 && musicCounter < 800) ret = 'Q';
-      else if(musicCounter > 801 && musicCounter < 900) ret = 'G';
-      */
-        hornSend = ret;
+      char ret =  'G';
+
+
     }
+
+
 
     /**
      * Initiate bluetooth connection with SARA. If SARA and the phone is not paired, it will promt
@@ -321,7 +306,7 @@ public class SaraMain extends Activity implements SensorEventListener {
                     .setPositiveButton("Got it!", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            finish();
+                            //finish();
                         }
                     })
                     .show();
@@ -372,6 +357,8 @@ public class SaraMain extends Activity implements SensorEventListener {
                 //insert code to deal with this
             }
         }
+
+
         mConnectedThread = new ConnectedThread(btSocket);
         mConnectedThread.start();
 
@@ -395,7 +382,7 @@ public class SaraMain extends Activity implements SensorEventListener {
           char sst = convertAcc(event.values[1]);
           sendSteering = sst;
 
-          if(bluetoothConnected) mConnectedThread.write(sendSteering, gasPosition, hornSend);
+          if(bluetoothConnected) mConnectedThread.write( (byte) 2 , sendSteering );
 
 
       }
@@ -409,7 +396,7 @@ public class SaraMain extends Activity implements SensorEventListener {
         float ut = in*2f;
         int utInt = (int) ut;
 
-        ret = (char) (85+steeringCorrectionValue-(utInt * (steeringMaxValue/10f)));
+        ret = (char) (100+steeringCorrectionValue-(utInt * (steeringMaxValue/10f)));
 
         return ret;
     }
@@ -520,7 +507,7 @@ public class SaraMain extends Activity implements SensorEventListener {
     protected void onStop() {
         super.onStop();
         //If app is exited, stop car.
-        mConnectedThread.write((char) convertAcc(0), (char) 50, (char) 0);
+        //mConnectedThread.write((char) convertAcc(0), (char) 50, (char) 0);
         sendAllowed = false;
         finish();
     }
@@ -542,6 +529,7 @@ private class ConnectedThread extends Thread {
             //Create I/O streams for connection
             tmpIn = socket.getInputStream();
             tmpOut = socket.getOutputStream();
+
         } catch (IOException e) {
             Toast.makeText(getApplicationContext(), "No socket", Toast.LENGTH_LONG).show();
         }
@@ -561,6 +549,7 @@ private class ConnectedThread extends Thread {
                 String readMessage = new String(buffer, 0, bytes);
                 // Send the obtained bytes to the UI Activity via handler
                 bluetoothIn.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
+
             } catch (IOException e) {
                 break;
             }
@@ -568,19 +557,24 @@ private class ConnectedThread extends Thread {
     }
 
     //write method
-    public void write(char steering, char gas, char horn) {
+    public void write(byte key, char value) {
 
         char dist = 0;
         if(distanceSencorActive) dist = 1;
 
 
-        byte[] msgBuffer = {(byte) steering, (byte) gasPosition, (byte) hornSend, (byte) dist};
+        byte[] msgBuffer = {key, (byte) value};
         boolean sent = true;
+
+
 
         if(sendAllowed){
 
+
             try {
                 mmOutStream.write(msgBuffer);                //write bytes over BT connection via outstream
+
+                //mmOutStream.flush();
 
             } catch (IOException e) {
                 Toast.makeText(getBaseContext(), "Couldn't send to bluetooth", Toast.LENGTH_LONG).show();
@@ -590,8 +584,8 @@ private class ConnectedThread extends Thread {
                 sent = false;
             }
             if (sent) {
-                tConnected.setText("" + (int) steering + " , " +(int) gasPosition + " , " +  hornSend + " Dist: " + distanceSencorActive);
-                tConnected.setTextColor(Color.GREEN);
+                //tConnected.setText(msgBuffer[0] + " " + msgBuffer[1]);
+               // tConnected.setTextColor(Color.GREEN);
             }
 
         }
@@ -599,5 +593,33 @@ private class ConnectedThread extends Thread {
     }
 
 }
+
+    private class PlayMusic extends Thread {
+
+        boolean play;
+        char tone;
+
+        public PlayMusic(boolean play, char tone) {
+            this.play = play;
+            this.tone = tone;
+        }
+
+
+        @Override
+        public void run() {
+            while(play) {
+                    if ( bluetoothConnected ) mConnectedThread.write( ( byte ) 3 , tone);
+            }
+         }
+
+        public void startPlay(){
+            play = true;
+        }
+
+        public void stopPlay(){
+            play = false;
+        }
+
+    }
 }
 
